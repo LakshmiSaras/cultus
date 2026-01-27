@@ -1,126 +1,129 @@
-# ============================================
-# ADVANCED TIME SERIES FORECASTING WITH LSTM
-# + MODEL EXPLAINABILITY USING SHAP
-# ============================================
-
-# -------- STEP 1: IMPORT LIBRARIES ----------
+# ================================
+# 1. IMPORT LIBRARIES
+# ================================
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import mean_squared_error, mean_absolute_error
+from sklearn.model_selection import TimeSeriesSplit
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 
+import tensorflow as tf
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense
+from tensorflow.keras.layers import LSTM, Dense, Dropout
 
 import shap
-import warnings
-warnings.filterwarnings("ignore")
 
-# -------- STEP 2: DATASET GENERATION ----------
+# ================================
+# 2. DATASET CREATION (MULTIVARIATE)
+# ================================
 np.random.seed(42)
+t = np.arange(0, 2000)
 
-time = np.arange(0, 1000)
-trend = time * 0.03
-seasonality = 10 * np.sin(2 * np.pi * time / 50)
-noise = np.random.normal(0, 2, size=len(time))
+trend = 0.003 * t
+season1 = 2 * np.sin(2 * np.pi * t / 50)
+season2 = 1.5 * np.sin(2 * np.pi * t / 200)
 
-value = trend + seasonality + noise
+x1 = season1 + np.random.normal(0, 0.3, len(t))
+x2 = trend + np.random.normal(0, 0.5, len(t))
+x3 = np.random.normal(0, 1 + t*0.001)
 
-df = pd.DataFrame({
-    "time": time,
-    "value": value
-})
+y = trend + season1 + season2 + 0.5*x1 + 0.3*x2 + x3
 
-plt.figure()
-plt.plot(df["time"], df["value"])
-plt.title("Synthetic Time Series (Trend + Seasonality + Noise)")
-plt.xlabel("Time")
-plt.ylabel("Value")
-plt.show()
+data = pd.DataFrame({"y": y, "x1": x1, "x2": x2, "x3": x3})
 
-# -------- STEP 3: SCALING ----------
+# ================================
+# 3. TIME-BASED FEATURES
+# ================================
+data['time'] = np.arange(len(data))
+data['sin_time'] = np.sin(2 * np.pi * data['time'] / 50)
+data['cos_time'] = np.cos(2 * np.pi * data['time'] / 50)
+
+# ================================
+# 4. SCALING
+# ================================
 scaler = MinMaxScaler()
-df["scaled_value"] = scaler.fit_transform(df[["value"]])
+scaled_data = scaler.fit_transform(data)
 
-# -------- STEP 4: SEQUENCE CREATION ----------
-def create_sequences(data, window_size=30):
+# ================================
+# 5. CREATE LAG SEQUENCES
+# ================================
+def create_sequences(data, n_steps_in=30, n_steps_out=7):
     X, y = [], []
-    for i in range(len(data) - window_size):
-        X.append(data[i:i + window_size])
-        y.append(data[i + window_size])
+    for i in range(len(data) - n_steps_in - n_steps_out):
+        X.append(data[i:i+n_steps_in])
+        y.append(data[i+n_steps_in:i+n_steps_in+n_steps_out, 0])
     return np.array(X), np.array(y)
 
-WINDOW_SIZE = 30
-X, y = create_sequences(df["scaled_value"].values, WINDOW_SIZE)
+X, y = create_sequences(scaled_data)
 
-# Reshape for LSTM [samples, timesteps, features]
-X = X.reshape((X.shape[0], X.shape[1], 1))
+# ================================
+# 6. TIME SERIES CROSS-VALIDATION
+# ================================
+tscv = TimeSeriesSplit(n_splits=5)
 
-# -------- STEP 5: TRAIN-TEST SPLIT ----------
-split_index = int(0.8 * len(X))
+rmse_scores = []
+mae_scores = []
 
-X_train, X_test = X[:split_index], X[split_index:]
-y_train, y_test = y[:split_index], y[split_index:]
+for fold, (train_index, test_index) in enumerate(tscv.split(X)):
+    print(f"\nTraining Fold {fold+1}")
 
-# -------- STEP 6: BUILD LSTM MODEL ----------
-model = Sequential([
-    LSTM(64, activation="tanh", input_shape=(X_train.shape[1], 1)),
-    Dense(1)
-])
+    X_train, X_test = X[train_index], X[test_index]
+    y_train, y_test = y[train_index], y[test_index]
 
-model.compile(
-    optimizer="adam",
-    loss="mse"
-)
+    # ================================
+    # 7. LSTM MODEL
+    # ================================
+    model = Sequential([
+        LSTM(64, activation='tanh', return_sequences=True, input_shape=(X.shape[1], X.shape[2])),
+        Dropout(0.2),
+        LSTM(32),
+        Dense(7)
+    ])
 
-model.summary()
+    model.compile(optimizer='adam', loss='mse', metrics=['mae'])
 
-# -------- STEP 7: TRAIN MODEL ----------
-history = model.fit(
-    X_train,
-    y_train,
-    epochs=20,
-    batch_size=32,
-    validation_split=0.1,
-    verbose=1
-)
+    model.fit(X_train, y_train, epochs=10, batch_size=32, verbose=0)
 
-# -------- STEP 8: MODEL EVALUATION ----------
-predictions = model.predict(X_test)
+    # ================================
+    # 8. PREDICTION & EVALUATION
+    # ================================
+    y_pred = model.predict(X_test)
 
-rmse = mean_squared_error(y_test, predictions, squared=False)
-mae = mean_absolute_error(y_test, predictions)
+    rmse = np.sqrt(mean_squared_error(y_test.flatten(), y_pred.flatten()))
+    mae = mean_absolute_error(y_test.flatten(), y_pred.flatten())
 
-print("RMSE:", rmse)
-print("MAE:", mae)
+    rmse_scores.append(rmse)
+    mae_scores.append(mae)
 
-# -------- STEP 9: PLOT ACTUAL VS PREDICTED ----------
-plt.figure()
-plt.plot(y_test[:200], label="Actual")
-plt.plot(predictions[:200], label="Predicted")
-plt.legend()
-plt.title("Actual vs Predicted Values")
-plt.show()
+    print(f"Fold {fold+1} RMSE: {rmse:.4f}, MAE: {mae:.4f}")
 
-# -------- STEP 10: MODEL EXPLAINABILITY USING SHAP ----------
-# Use a small background set for performance
-background = X_train[:100]
-test_samples = X_test[:10]
+print("\nAverage RMSE:", np.mean(rmse_scores))
+print("Average MAE:", np.mean(mae_scores))
 
-explainer = shap.DeepExplainer(model, background)
-shap_values = explainer.shap_values(test_samples)
+# ================================
+# 9. EXPLAINABILITY (SHAP)
+# ================================
+print("\nRunning SHAP Explainability...")
 
-# SHAP summary plot
-shap.summary_plot(shap_values[0], test_samples)
+explainer = shap.DeepExplainer(model, X_train[:100])
+shap_values = explainer.shap_values(X_test[:10])
 
-# -------- STEP 11: FINAL SUMMARY ----------
-print("\nFINAL MODEL SUMMARY")
-print("-------------------")
-print("Window Size:", WINDOW_SIZE)
-print("Model: LSTM (64 units)")
-print("Optimizer: Adam")
-print("Loss Function: MSE")
-print("Evaluation Metrics: RMSE, MAE")
-print("Explainability: SHAP values for time-step importance")
+# Plot SHAP summary
+shap.summary_plot(shap_values[0], X_test[:10], feature_names=data.columns)
+
+# ================================
+# 10. GRADIENT-BASED IMPORTANCE
+# ================================
+print("\nComputing Gradient-Based Feature Importance...")
+
+sample = tf.convert_to_tensor(X_test[:1])
+with tf.GradientTape() as tape:
+    tape.watch(sample)
+    prediction = model(sample)
+
+grads = tape.gradient(prediction, sample)
+importance = tf.reduce_mean(tf.abs(grads), axis=0).numpy()
+
+print("Feature Importance Shape:", importance.shape)
