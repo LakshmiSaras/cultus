@@ -78,3 +78,12 @@ Feature engineering for temporal data
 Model evaluation and comparison
 
 Practical implementation of LSTMs
+
+Advanced-Time-Series-LSTM/
+│
+├── 📄 project.py
+├── 📄 README.md
+├── 📄 Project Description.docx (or .pdf)
+├── 📄 Implementation Explanation.docx (or .pdf)
+├── 📄 Expected Deliverables.docx (or .pdf)
+├── 📄 Test Report.docx (or .pdf)
