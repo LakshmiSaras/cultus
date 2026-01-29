@@ -1,0 +1,138 @@
+TASK 1: Generate Synthetic Multivariate Financial Dataset
+✔ Requirements Covered
+
+Minimum 5 features ✅
+
+Minimum 2000 observations ✅
+
+Must simulate:
+
+Correlated financial assets ✅
+
+Non-stationarity ✅
+
+Volatility changes ✅
+
+✔ What We Did
+
+Generated 5 synthetic assets with starting price = 100
+
+Created correlation between assets using Cholesky decomposition
+
+Simulated non-stationarity using a drift term (trend over time)
+
+Simulated volatility clustering using a GARCH-like recursive variance formula
+
+Produced 2500 time steps
+
+✔ Outcome
+
+A realistic financial dataset with:
+
+Trend
+
+Correlation
+
+Volatility spikes
+
+Market-like randomness
+
+🔹 TASK 2: Feature Engineering Pipeline
+✔ Requirements Covered
+
+Sequence creation for LSTM input ✅
+
+Look-back window defined ✅
+
+Scaling strategy used ✅
+
+✔ What We Did
+
+For each asset we engineered:
+
+Feature	Why
+Returns	Captures momentum
+Moving Average (10)	Short-term trend
+Moving Average (30)	Long-term trend
+Rolling Volatility	Market risk
+✔ Scaling
+
+Used RobustScaler
+👉 Better than MinMax because financial data has outliers
+
+✔ Sequence Creation
+
+Look-back window = 30 time steps
+
+Input shape to LSTM:
+
+(samples, 30 timesteps, number_of_features)
+
+🔹 TASK 3: Design & Train Optimized LSTM Model
+✔ Requirements Covered
+
+TensorFlow/Keras model ✅
+
+Hyperparameter tuning (manual) ✅
+
+Minimize forecasting error ✅
+
+✔ LSTM Architecture
+Layer	Units	Purpose
+LSTM	128	Capture long-term dependencies
+Dropout	0.3	Prevent overfitting
+LSTM	64	Higher-level sequence learning
+Dropout	0.3	Regularization
+Dense	32	Feature compression
+Dense	1	Forecast output
+✔ Hyperparameters Tuned
+
+Lookback window = 30
+
+Units = 128 → 64
+
+Dropout = 0.3
+
+Batch size = 32
+
+EarlyStopping patience = 10
+
+🔹 TASK 4: Comparative Analysis with Baseline Model
+✔ Requirement Covered
+
+Train a non-deep learning model and compare results
+
+✔ Baseline Used: SARIMAX (1,1,1)
+LSTM	SARIMAX
+Learns nonlinear patterns	Only linear relationships
+Uses multivariate features	Uses only past values
+Handles volatility patterns	Cannot adapt to regime changes
+
+✔ Both models evaluated on the same test data
+
+🔹 TASK 5: Comprehensive Analysis Section
+✔ Optimization Choices
+
+Larger first LSTM layer for memory retention
+
+Dropout for overfitting prevention
+
+RobustScaler for stable training
+
+✔ Validation Strategy
+
+Chronological split (NO data leakage)
+
+80% training, 20% testing
+
+Validation split inside training
+
+Early stopping used
+
+✔ Final Metrics Used
+
+MAE (Mean Absolute Error)
+
+RMSE (Root Mean Squared Error)
+
+MAPE (Mean Absolute Percentage Error)
