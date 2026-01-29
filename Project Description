@@ -1,0 +1,154 @@
+#PROJECT DESCRIPTION
+
+Title:
+Advanced Multivariate Time Series Forecasting using LSTM on Synthetic Financial Data
+
+This project focuses on building a deep learning–based forecasting system for financial time series using a Long Short-Term Memory (LSTM) neural network. Instead of using a simple dataset, we simulate a realistic stock-market-like environment with:
+
+Multiple correlated assets
+
+Volatility clustering (GARCH-like behavior)
+
+Non-stationarity
+
+Trend and risk dynamics
+
+The goal is to design an optimized LSTM model that can learn nonlinear temporal dependencies and compare its performance with a traditional statistical baseline model (SARIMAX).
+
+This project demonstrates:
+
+Time series simulation
+
+Advanced feature engineering
+
+Sequence modeling using LSTMs
+
+Model tuning & regularization
+
+Comparative performance analysis
+
+🧠 STEP-BY-STEP EXPLANATION
+🔹 STEP 1: Synthetic Financial Data Generation
+
+We programmatically generate a dataset that mimics real financial markets.
+
+✔ What we simulated
+
+5 correlated assets
+
+2500 time steps
+
+Market drift (average growth)
+
+Volatility clustering (like GARCH)
+
+Correlated price movements using Cholesky decomposition
+
+✔ Why this is important
+Real financial data has:
+
+Sudden spikes
+
+Changing volatility
+
+Assets influencing each other
+Our synthetic data captures all these behaviors.
+
+🔹 STEP 2: Feature Engineering
+
+Raw prices are not enough. We create informative features.
+
+For each asset we compute:
+
+Feature	Purpose
+Returns	Momentum and direction of movement
+10-day Moving Average	Short-term trend
+30-day Moving Average	Long-term trend
+Rolling Volatility	Market risk level
+
+✔ These features help the LSTM understand trend + risk + momentum
+
+🔹 STEP 3: Data Preprocessing
+
+✔ Missing values removed
+✔ Features scaled using RobustScaler (handles outliers better than MinMax)
+✔ Data converted into sequences using a lookback window
+
+Lookback = 30
+This means the model uses the past 30 time steps to predict the next value.
+
+🔹 STEP 4: Sequence Creation for LSTM
+
+LSTMs require 3D input:
+
+(samples, time_steps, features)
+
+
+So we transform the data into sequences:
+
+Input → Last 30 days of features
+
+Output → Next value of Asset_0
+
+This allows the model to learn temporal dependencies.
+
+🔹 STEP 5: LSTM Model Architecture
+Layer	Description
+LSTM (128 units)	Learns long-term dependencies
+Dropout (0.3)	Reduces overfitting
+LSTM (64 units)	Extracts higher-level patterns
+Dropout (0.3)	Regularization
+Dense (32)	Nonlinear feature learning
+Dense (1)	Final forecast output
+
+✔ Activation: ReLU in Dense layer
+✔ Optimizer: Adam
+✔ Loss: Mean Squared Error
+
+🔹 STEP 6: Model Training Strategy
+
+✔ 80% training, 20% testing
+✔ Validation split from training data
+✔ EarlyStopping used to prevent overfitting
+✔ Model learns until validation loss stops improving
+
+This ensures the model generalizes well.
+
+🔹 STEP 7: Baseline Statistical Model (SARIMAX)
+
+To compare deep learning with traditional methods, we train:
+
+SARIMAX (1,1,1)
+
+✔ Captures linear time dependencies
+✔ Cannot model nonlinear patterns
+✔ Serves as performance benchmark
+
+🔹 STEP 8: Model Evaluation Metrics
+
+We use 3 industry-standard forecasting metrics:
+
+Metric	Meaning
+MAE	Average absolute prediction error
+RMSE	Penalizes large errors more
+MAPE	Percentage error (scale independent)
+
+These metrics are computed for both LSTM and SARIMAX.
+
+🔹 STEP 9: Results Visualization
+
+We plot:
+
+Actual values
+
+LSTM predictions
+
+This visually shows how closely the model tracks real movements.
+
+📊 MODEL PERFORMANCE SUMMARY
+Model	Strengths	Weaknesses
+LSTM	Learns nonlinear patterns, captures volatility and cross-asset influence	Requires more computation
+SARIMAX	Simple and interpretable	Cannot model complex relationships
+
+Conclusion:
+LSTM outperforms SARIMAX because financial markets are nonlinear and dynamic.
